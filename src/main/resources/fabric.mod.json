@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "autotip",
+  "version": "${version}",
+  "name": "Autotip",
+  "description": "Autotip tips online boosters, and other online autotip users. You send and receive tips, increasing your coin and experience gain.",
+  "authors": [],
+  "contact": {},
+  "license": "GPL-3.0",
+  "icon": "assets/autotip/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "club.sk1er.mods.autotip.Autotip"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
