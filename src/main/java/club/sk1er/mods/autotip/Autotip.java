@@ -22,6 +22,7 @@ package club.sk1er.mods.autotip;
 import club.sk1er.mods.autotip.api.AutotipHttpClient;
 import club.sk1er.mods.autotip.auth.AuthManager;
 import club.sk1er.mods.autotip.command.CommandManager;
+import club.sk1er.mods.autotip.tipping.TipManager;
 import club.sk1er.mods.autotip.util.HypixelUtil;
 import club.sk1er.mods.autotip.util.MessageUtil;
 import net.fabricmc.api.ClientModInitializer;
@@ -33,6 +34,7 @@ public class Autotip implements ClientModInitializer {
     private AutotipHttpClient autotipHttpClient;
     private static Autotip instance;
     private CommandManager commandManager;
+    private TipManager tipManager;
     public static final String VERSION = "3.3";
 
     @Override
@@ -42,6 +44,7 @@ public class Autotip implements ClientModInitializer {
         authManager = new AuthManager();
         autotipHttpClient = new AutotipHttpClient();
         commandManager = new CommandManager();
+        tipManager = new TipManager();
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             HypixelUtil.onServerJoin();
@@ -69,5 +72,9 @@ public class Autotip implements ClientModInitializer {
 
     public CommandManager getCommandManager() {
         return commandManager;
+    }
+
+    public TipManager getTipManager() {
+        return tipManager;
     }
 }

@@ -35,6 +35,7 @@ public class AutotipAPIRequestFactory {
     protected static final String TIP_ENDPOINT = "tip";
     protected static final String LOGIN_ENDPOINT = "login";
     protected static final String LOGOUT_ENDPOINT = "logout";
+    protected static final String KEEPALIVE_ENDPOINT = "keepalive";
 
     public static HttpUriRequest createLoginRequest(User user, String serverHash) {
 
@@ -59,6 +60,26 @@ public class AutotipAPIRequestFactory {
         String url = String.format(
                 "%s?key=%s",
                 BASE_URL + LOGOUT_ENDPOINT, key
+        );
+
+        return getURIfromUrl(url);
+    }
+
+    public static HttpUriRequest createTipRequest(String sessionKey) {
+        String key = URLEncoder.encode(sessionKey, StandardCharsets.UTF_8);
+        String url = String.format(
+                "%s?key=%s",
+                BASE_URL + TIP_ENDPOINT, key
+        );
+
+        return getURIfromUrl(url);
+    }
+
+    public static HttpUriRequest createKeepAliveRequest(String sessionKey) {
+        String key = URLEncoder.encode(sessionKey, StandardCharsets.UTF_8);
+        String url = String.format(
+                "%s?key=%s",
+                BASE_URL + KEEPALIVE_ENDPOINT, key
         );
 
         return getURIfromUrl(url);

@@ -87,7 +87,15 @@ public class AuthManager {
                 if (loginRecord.success()) {
                     sessionKey = loginRecord.sessionKey();
                     loggedIn = true;
-                    Autotip.getInstance().getMessageUtil().send("Successfully connected to Autotip API!"); // TODO: Prettier / Toggleable message
+
+                    // Start the tip manager with rates from login response
+                    Autotip.getInstance().getTipManager().start(
+                            loginRecord.keepAliveRate(),
+                            loginRecord.tipWaveRate(),
+                            loginRecord.tipCycleRate()
+                    );
+
+                    Autotip.getInstance().getMessageUtil().send("Successfully connected to Autotip!"); // TODO: Prettier / Toggleable message
                 } else {
                     Autotip.getInstance().getMessageUtil().send("Error during login: {}", loginRecord.cause() == null ? "null" : loginRecord.cause());
                 }
@@ -99,6 +107,8 @@ public class AuthManager {
 
     public void logout() {
         if (loggedIn) {
+            Autotip.getInstance().getTipManager().stop();
+
             HttpUriRequest request = AutotipAPIRequestFactory.createLogoutRequest(sessionKey);
 
             try {
@@ -108,7 +118,7 @@ public class AuthManager {
                 if (logoutRecord.success()) {
                     sessionKey = null;
                     loggedIn = false;
-                    Autotip.getInstance().getMessageUtil().send("Successfully disconnected from Autotip API!"); // TODO: Prettier / Toggleable message
+                    Autotip.getInstance().getMessageUtil().send("Successfully disconnected from Autotip!"); // TODO: Prettier / Toggleable message
                 } else {
                     Autotip.getInstance().getMessageUtil().send("Error during logout: {}", logoutRecord.cause() == null ? "null" : logoutRecord.cause());
                 }

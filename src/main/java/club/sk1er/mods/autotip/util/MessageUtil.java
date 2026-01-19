@@ -20,6 +20,7 @@
 package club.sk1er.mods.autotip.util;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.chat.Component;
 
 import java.util.regex.Matcher;
@@ -46,10 +47,14 @@ public class MessageUtil {
     }
 
     public void sendCommand(String command) {
-        sendPlayerChat("/" + command);
-    }
-    private void sendPlayerChat(String message) {
-        // TODO: Implement Player Chat Send
+        // Strip leading slash if present, then send as command
+        String cmd = command.startsWith("/") ? command.substring(1) : command;
+        Minecraft client = Minecraft.getInstance();
+        ClientPacketListener connection = client.getConnection();
+
+        if (connection != null) {
+            connection.sendCommand(cmd);
+        }
     }
 
     private String format(String input, Object... params) {
