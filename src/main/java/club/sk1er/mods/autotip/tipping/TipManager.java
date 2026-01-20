@@ -118,12 +118,14 @@ public class TipManager {
             KeepAliveRecord record = KeepAliveRecord.fromResponseBody(response);
 
             if (record.success()) {
-                System.out.println("[Autotip] Keep-alive sent");
+                if (Autotip.DEBUG) {
+                    Autotip.getInstance().getMessageUtil().log("Keep-alive sent");
+                }
             } else {
-                System.err.println("[Autotip] Keep-alive failed: " + record.cause());
+                Autotip.getInstance().getMessageUtil().log("§cKeep-alive failed: " + record.cause());
             }
         } catch (IOException e) {
-            System.err.println("[Autotip] Keep-alive failed: " + e.getMessage());
+            Autotip.getInstance().getMessageUtil().log("§cKeep-alive failed: " + e.getMessage());
         }
     }
 
@@ -148,12 +150,14 @@ public class TipManager {
                 tipRecord = TipRecord.defaultTips();
             }
         } catch (Exception e) {
-            System.err.println("[Autotip] Failed to fetch tips, using default: " + e.getMessage());
+            Autotip.getInstance().getMessageUtil().log("§cFailed to fetch tips, using default: " + e.getMessage());
             tipRecord = TipRecord.defaultTips();
         }
 
         tipQueue.addAll(tipRecord.tips());
-        System.out.println("[Autotip] Tip queue: " + tipQueue);
+        if (Autotip.DEBUG) {
+            Autotip.getInstance().getMessageUtil().log("§aTip queue: " + tipQueue);
+        }
 
         cancelTask(tipCycleTask);
         if (tipCycleRate > 0 && !tipQueue.isEmpty()) {
@@ -178,7 +182,9 @@ public class TipManager {
 
         Tip tip = tipQueue.poll();
         if (tip != null) {
-            System.out.println("[Autotip] Tipping: " + tip);
+            if (Autotip.DEBUG) {
+                Autotip.getInstance().getMessageUtil().log("§aTipping: " + tip);
+            }
             Autotip.getInstance().getMessageUtil().sendCommand(tip.asCommand());
         }
     }

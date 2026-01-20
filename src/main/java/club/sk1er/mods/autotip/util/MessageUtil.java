@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 
 public class MessageUtil {
     private final Pattern PARAM_PATTERN = Pattern.compile("\\{}");
-    private final String PREFIX = "[Autotip] "; // TODO: Improve prefix
+    public static final String PREFIX = "[Autotip] "; // TODO: Improve prefix
 
     public MessageUtil() {
     }
@@ -36,14 +36,20 @@ public class MessageUtil {
     public void send(String message, Object... replacements) {
         send(format(message, replacements));
     }
-
+    public void error(String message, Object... replacements) {
+        send(PREFIX + message, replacements);
+    }
     public void send(String message) {
         if (Minecraft.getInstance().player != null) {
-            Minecraft.getInstance().player.displayClientMessage(Component.literal(PREFIX + message), false);
+            Minecraft.getInstance().player.displayClientMessage(Component.literal(message), false);
             // TODO: AND TRANSLATIONS
         } else {
             System.out.println(PREFIX + message); // TODO: message if not on a server
         }
+    }
+
+    public void log(String log) {
+        System.out.println(PREFIX + log);
     }
 
     public void sendCommand(String command) {

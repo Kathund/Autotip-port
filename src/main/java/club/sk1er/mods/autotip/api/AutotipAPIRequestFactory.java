@@ -37,11 +37,10 @@ public class AutotipAPIRequestFactory {
     protected static final String LOGOUT_ENDPOINT = "logout";
     protected static final String KEEPALIVE_ENDPOINT = "keepalive";
 
-    public static HttpUriRequest createLoginRequest(User user, String serverHash) {
-
+    public static HttpUriRequest createLoginRequest(User user, String serverHash, int totalTips) {
         String username = URLEncoder.encode(user.getName(), StandardCharsets.UTF_8);
         String uuid = URLEncoder.encode(user.getProfileId().toString().replace("-", ""), StandardCharsets.UTF_8);
-        String tips = URLEncoder.encode("0", StandardCharsets.UTF_8); // TODO: Implement tips
+        String tips = URLEncoder.encode(String.valueOf(totalTips), StandardCharsets.UTF_8);
         String version = URLEncoder.encode(Autotip.VERSION, StandardCharsets.UTF_8);
         String mcVersion = URLEncoder.encode(Minecraft.getInstance().getLaunchedVersion(), StandardCharsets.UTF_8);
         String os = URLEncoder.encode(System.getProperty("os.name"), StandardCharsets.UTF_8);

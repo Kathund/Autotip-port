@@ -72,7 +72,7 @@ public class HypixelUtil {
                 Autotip.getInstance().getAuthManager().login();
             } catch (Exception e) {
                 e.printStackTrace();
-                Autotip.getInstance().getMessageUtil().send("&cAutotip login failed: " + e.getMessage());
+                Autotip.getInstance().getMessageUtil().error("&cAutotip login failed: " + e.getMessage());
             }
         }, "Autotip-Login-Thread").start();
     }
@@ -85,7 +85,7 @@ public class HypixelUtil {
     public static void onServerDisconnect() {
         if (lastHypixelAddress != null) {
             try {
-                Autotip.getInstance().getAuthManager().logout(); // implement in AuthManager
+                Autotip.getInstance().getAuthManager().logout();
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -21,7 +21,9 @@ package club.sk1er.mods.autotip;
 
 import club.sk1er.mods.autotip.api.AutotipHttpClient;
 import club.sk1er.mods.autotip.auth.AuthManager;
+import club.sk1er.mods.autotip.chat.ChatListener;
 import club.sk1er.mods.autotip.command.CommandManager;
+import club.sk1er.mods.autotip.stats.StatsManager;
 import club.sk1er.mods.autotip.tipping.TipManager;
 import club.sk1er.mods.autotip.util.HypixelUtil;
 import club.sk1er.mods.autotip.util.MessageUtil;
@@ -29,12 +31,16 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 
 public class Autotip implements ClientModInitializer {
+    // NEVER TRUE IN PRODUCTION
+    public static final boolean DEBUG = false;
     private MessageUtil messageUtil;
     private AuthManager authManager;
     private AutotipHttpClient autotipHttpClient;
     private static Autotip instance;
     private CommandManager commandManager;
     private TipManager tipManager;
+    private StatsManager statsManager;
+    private ChatListener chatListener;
     public static final String VERSION = "3.3";
 
     @Override
@@ -45,6 +51,8 @@ public class Autotip implements ClientModInitializer {
         autotipHttpClient = new AutotipHttpClient();
         commandManager = new CommandManager();
         tipManager = new TipManager();
+        statsManager = new StatsManager();
+        chatListener = new ChatListener();
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             HypixelUtil.onServerJoin();
@@ -76,5 +84,9 @@ public class Autotip implements ClientModInitializer {
 
     public TipManager getTipManager() {
         return tipManager;
+    }
+
+    public StatsManager getStatsManager() {
+        return statsManager;
     }
 }

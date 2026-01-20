@@ -41,6 +41,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 import org.apache.http.client.methods.HttpUriRequest;
 
+import static club.sk1er.mods.autotip.util.MessageUtil.PREFIX;
+
 public class AuthManager {
     private static final SecureRandom RANDOM = new SecureRandom();
     public static boolean loggedIn = false;
@@ -74,11 +76,12 @@ public class AuthManager {
 
             int statusCode = this.authenticate(token, uuid, serverHash);
             if (statusCode / 100 != 2) {
-                Autotip.getInstance().getMessageUtil().send("Error {} during authentication: Session servers down?", statusCode);
+                Autotip.getInstance().getMessageUtil().error("Error {} during authentication: Session servers down?", statusCode);
                 return;
             }
 
-            HttpUriRequest request = AutotipAPIRequestFactory.createLoginRequest(user, serverHash);
+            int totalTips = Autotip.getInstance().getStatsManager().getStats().getTipsTotal();
+            HttpUriRequest request = AutotipAPIRequestFactory.createLoginRequest(user, serverHash, totalTips);
 
             try {
                 AutotipHttpClient client = Autotip.getInstance().getAutotipHttpClient();
@@ -88,16 +91,15 @@ public class AuthManager {
                     sessionKey = loginRecord.sessionKey();
                     loggedIn = true;
 
-                    // Start the tip manager with rates from login response
                     Autotip.getInstance().getTipManager().start(
                             loginRecord.keepAliveRate(),
                             loginRecord.tipWaveRate(),
                             loginRecord.tipCycleRate()
                     );
 
-                    Autotip.getInstance().getMessageUtil().send("Successfully connected to Autotip!"); // TODO: Prettier / Toggleable message
+                    Autotip.getInstance().getMessageUtil().log("Successfully connected to Autotip!"); // TODO: Prettier / Toggleable message
                 } else {
-                    Autotip.getInstance().getMessageUtil().send("Error during login: {}", loginRecord.cause() == null ? "null" : loginRecord.cause());
+                    Autotip.getInstance().getMessageUtil().error("Error during login: {}", loginRecord.cause() == null ? "null" : loginRecord.cause());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -118,9 +120,9 @@ public class AuthManager {
                 if (logoutRecord.success()) {
                     sessionKey = null;
                     loggedIn = false;
-                    Autotip.getInstance().getMessageUtil().send("Successfully disconnected from Autotip!"); // TODO: Prettier / Toggleable message
+                    Autotip.getInstance().getMessageUtil().log("Successfully disconnected from Autotip!"); // TODO: Prettier / Toggleable message
                 } else {
-                    Autotip.getInstance().getMessageUtil().send("Error during logout: {}", logoutRecord.cause() == null ? "null" : logoutRecord.cause());
+                    Autotip.getInstance().getMessageUtil().error("Error during logout: {}", logoutRecord.cause() == null ? "null" : logoutRecord.cause());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
