@@ -26,8 +26,10 @@ import club.sk1er.mods.autotip.stats.StatsManager;
 import club.sk1er.mods.autotip.util.HypixelUtil;
 import club.sk1er.mods.autotip.util.MessageUtil;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
 import java.util.Map;
 
@@ -48,136 +50,87 @@ public class CommandManager {
 
     private void registerCommands() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-
-            dispatcher.register(ClientCommandManager.literal("autotip")
-                    // /autotip - show help
-                    .executes(context -> {
-                        showHelp();
-                        return 1;
-                    })
-                    // /autotip info
-                    .then(ClientCommandManager.literal("info")
-                            .executes(context -> {
-                                showInfo();
-                                return 1;
-                            }))
-                    // /autotip stats [period]
-                    .then(ClientCommandManager.literal("stats")
-                            .executes(context -> {
-                                showStats(StatsManager.StatsPeriod.LIFETIME);
-                                return 1;
-                            })
-                            .then(ClientCommandManager.argument("period", StringArgumentType.word())
-                                    .suggests((context, builder) -> {
-                                        builder.suggest("daily");
-                                        builder.suggest("weekly");
-                                        builder.suggest("monthly");
-                                        builder.suggest("yearly");
-                                        builder.suggest("lifetime");
-                                        return builder.buildFuture();
-                                    })
-                                    .executes(context -> {
-                                        String periodStr = StringArgumentType.getString(context, "period");
-                                        StatsManager.StatsPeriod period = parsePeriod(periodStr);
-                                        if (period == null) {
-                                            messageUtil.send("§cUnknown period: " + periodStr);
-                                            messageUtil.send("§cValid: daily, weekly, monthly, yearly, lifetime");
-                                            return 0;
-                                        }
-                                        showStats(period);
-                                        return 1;
-                                    })))
-                    // /autotip currency [period]
-                    .then(ClientCommandManager.literal("currency")
-                            .executes(context -> {
-                                showCurrency(StatsManager.StatsPeriod.LIFETIME);
-                                return 1;
-                            })
-                            .then(ClientCommandManager.argument("period", StringArgumentType.word())
-                                    .suggests((context, builder) -> {
-                                        builder.suggest("daily");
-                                        builder.suggest("weekly");
-                                        builder.suggest("monthly");
-                                        builder.suggest("yearly");
-                                        builder.suggest("lifetime");
-                                        return builder.buildFuture();
-                                    })
-                                    .executes(context -> {
-                                        String periodStr = StringArgumentType.getString(context, "period");
-                                        StatsManager.StatsPeriod period = parsePeriod(periodStr);
-                                        if (period == null) {
-                                            messageUtil.send("§cUnknown period: " + periodStr);
-                                            messageUtil.send("§cValid: daily, weekly, monthly, yearly, lifetime");
-                                            return 0;
-                                        }
-                                        showCurrency(period);
-                                        return 1;
-                                    })))
-            );
-
-            // /at as alias for /autotip
-            dispatcher.register(ClientCommandManager.literal("at")
-                    .executes(context -> {
-                        showHelp();
-                        return 1;
-                    })
-                    .then(ClientCommandManager.literal("info")
-                            .executes(context -> {
-                                showInfo();
-                                return 1;
-                            }))
-                    .then(ClientCommandManager.literal("stats")
-                            .executes(context -> {
-                                showStats(StatsManager.StatsPeriod.LIFETIME);
-                                return 1;
-                            })
-                            .then(ClientCommandManager.argument("period", StringArgumentType.word())
-                                    .suggests((context, builder) -> {
-                                        builder.suggest("daily");
-                                        builder.suggest("weekly");
-                                        builder.suggest("monthly");
-                                        builder.suggest("yearly");
-                                        builder.suggest("lifetime");
-                                        return builder.buildFuture();
-                                    })
-                                    .executes(context -> {
-                                        String periodStr = StringArgumentType.getString(context, "period");
-                                        StatsManager.StatsPeriod period = parsePeriod(periodStr);
-                                        if (period == null) {
-                                            messageUtil.send("§cUnknown period: " + periodStr);
-                                            messageUtil.send("§cValid: daily, weekly, monthly, yearly, lifetime");
-                                            return 0;
-                                        }
-                                        showStats(period);
-                                        return 1;
-                                    })))
-                    .then(ClientCommandManager.literal("currency")
-                            .executes(context -> {
-                                showCurrency(StatsManager.StatsPeriod.LIFETIME);
-                                return 1;
-                            })
-                            .then(ClientCommandManager.argument("period", StringArgumentType.word())
-                                    .suggests((context, builder) -> {
-                                        builder.suggest("daily");
-                                        builder.suggest("weekly");
-                                        builder.suggest("monthly");
-                                        builder.suggest("yearly");
-                                        builder.suggest("lifetime");
-                                        return builder.buildFuture();
-                                    })
-                                    .executes(context -> {
-                                        String periodStr = StringArgumentType.getString(context, "period");
-                                        StatsManager.StatsPeriod period = parsePeriod(periodStr);
-                                        if (period == null) {
-                                            messageUtil.send("§cUnknown period: " + periodStr);
-                                            messageUtil.send("§cValid: daily, weekly, monthly, yearly, lifetime");
-                                            return 0;
-                                        }
-                                        showCurrency(period);
-                                        return 1;
-                                    })))
-            );
+            dispatcher.register(buildCommand("autotip"));
+            dispatcher.register(buildCommand("at"));
         });
+    }
+
+    private LiteralArgumentBuilder<FabricClientCommandSource> buildCommand(String name) {
+        return ClientCommandManager.literal(name)
+                .executes(context -> {
+                    showHelp();
+                    return 1;
+                })
+                .then(buildInfoSubcommand("info"))
+                .then(buildInfoSubcommand("i"))
+                .then(buildStatsSubcommand("stats"))
+                .then(buildStatsSubcommand("s"))
+                .then(buildCurrencySubcommand("currency"))
+                .then(buildCurrencySubcommand("c"));
+    }
+
+    private LiteralArgumentBuilder<FabricClientCommandSource> buildInfoSubcommand(String name) {
+        return ClientCommandManager.literal(name)
+                .executes(context -> {
+                    showInfo();
+                    return 1;
+                });
+    }
+
+    private LiteralArgumentBuilder<FabricClientCommandSource> buildStatsSubcommand(String name) {
+        return ClientCommandManager.literal(name)
+                .executes(context -> {
+                    showStats(StatsManager.StatsPeriod.LIFETIME);
+                    return 1;
+                })
+                .then(ClientCommandManager.argument("period", StringArgumentType.word())
+                        .suggests((context, builder) -> {
+                            builder.suggest("daily");
+                            builder.suggest("weekly");
+                            builder.suggest("monthly");
+                            builder.suggest("yearly");
+                            builder.suggest("lifetime");
+                            return builder.buildFuture();
+                        })
+                        .executes(context -> {
+                            String periodStr = StringArgumentType.getString(context, "period");
+                            StatsManager.StatsPeriod period = parsePeriod(periodStr);
+                            if (period == null) {
+                                messageUtil.send("§cUnknown period: " + periodStr);
+                                messageUtil.send("§cValid: daily, weekly, monthly, yearly, lifetime");
+                                return 0;
+                            }
+                            showStats(period);
+                            return 1;
+                        }));
+    }
+
+    private LiteralArgumentBuilder<FabricClientCommandSource> buildCurrencySubcommand(String name) {
+        return ClientCommandManager.literal(name)
+                .executes(context -> {
+                    showCurrency(StatsManager.StatsPeriod.LIFETIME);
+                    return 1;
+                })
+                .then(ClientCommandManager.argument("period", StringArgumentType.word())
+                        .suggests((context, builder) -> {
+                            builder.suggest("daily");
+                            builder.suggest("weekly");
+                            builder.suggest("monthly");
+                            builder.suggest("yearly");
+                            builder.suggest("lifetime");
+                            return builder.buildFuture();
+                        })
+                        .executes(context -> {
+                            String periodStr = StringArgumentType.getString(context, "period");
+                            StatsManager.StatsPeriod period = parsePeriod(periodStr);
+                            if (period == null) {
+                                messageUtil.send("§cUnknown period: " + periodStr);
+                                messageUtil.send("§cValid: daily, weekly, monthly, yearly, lifetime");
+                                return 0;
+                            }
+                            showCurrency(period);
+                            return 1;
+                        }));
     }
 
     private void showHelp() {
