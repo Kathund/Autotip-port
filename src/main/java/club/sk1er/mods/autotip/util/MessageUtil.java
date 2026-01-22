@@ -40,12 +40,15 @@ public class MessageUtil {
         send(PREFIX + message, replacements);
     }
     public void send(String message) {
-        if (Minecraft.getInstance().player != null) {
-            Minecraft.getInstance().player.displayClientMessage(Component.literal(message), false);
-            // TODO: AND TRANSLATIONS
-        } else {
-            System.out.println(PREFIX + message); // TODO: message if not on a server
-        }
+        Minecraft mc = Minecraft.getInstance();
+        // Must run on render thread
+        mc.execute(() -> {
+            if (mc.player != null) {
+                mc.player.displayClientMessage(Component.literal(message), false);
+            } else {
+                System.out.println(PREFIX + message);
+            }
+        });
     }
 
     public void log(String log) {
@@ -53,14 +56,15 @@ public class MessageUtil {
     }
 
     public void sendCommand(String command) {
-        // Strip leading slash if present, then send as command
         String cmd = command.startsWith("/") ? command.substring(1) : command;
-        Minecraft client = Minecraft.getInstance();
-        ClientPacketListener connection = client.getConnection();
-
-        if (connection != null) {
-            connection.sendCommand(cmd);
-        }
+        Minecraft mc = Minecraft.getInstance();
+        // Must run on render thread
+        mc.execute(() -> {
+            ClientPacketListener connection = mc.getConnection();
+            if (connection != null) {
+                connection.sendCommand(cmd);
+            }
+        });
     }
 
     private String format(String input, Object... params) {

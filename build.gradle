@@ -1,11 +1,11 @@
 plugins {
     id 'fabric-loom' version '1.14-SNAPSHOT'
     id 'maven-publish'
+    id"com.gradleup.shadow" version "9.1.0"
 }
 
 version = project.mod_version
 group = project.maven_group
-
 base {
     archivesName = project.archives_base_name
 }
@@ -19,12 +19,17 @@ repositories {
     // for more information about repositories.
 }
 
+configurations {
+    shade
+    implementation.extendsFrom shade
+}
+
 dependencies {
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
+    shade 'org.apache.httpcomponents:httpclient:4.5.14'
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
@@ -32,12 +37,14 @@ processResources {
     inputs.property "version", project.version
     inputs.property "minecraft_version", project.minecraft_version
     inputs.property "loader_version", project.loader_version
+    inputs.property "max_minecraft_version", project.max_minecraft_version
     filteringCharset "UTF-8"
 
     filesMatching("fabric.mod.json") {
         expand "version": project.version,
                 "minecraft_version": project.minecraft_version,
-                "loader_version": project.loader_version
+                "loader_version": project.loader_version,
+                "max_minecraft_version": project.max_minecraft_version
     }
 }
 
@@ -68,6 +75,22 @@ jar {
     from("LICENSE") {
         rename { "${it}_${project.archivesBaseName}" }
     }
+}
+
+// Configure shadowJar to only include httpclient (not the entire classpath)
+shadowJar {
+    archiveClassifier.set('dev')
+    configurations = [project.configurations.shade]
+
+    relocate 'org.apache.http', 'club.sk1er.mods.autotip.shaded.org.apache.http'
+    relocate 'org.apache.commons.logging', 'club.sk1er.mods.autotip.shaded.org.apache.commons.logging'
+    relocate 'org.apache.commons.codec', 'club.sk1er.mods.autotip.shaded.org.apache.commons.codec'
+}
+
+// Remap the shadowed jar
+remapJar {
+    dependsOn shadowJar
+    inputFile = shadowJar.archiveFile
 }
 
 // configure the maven publication
