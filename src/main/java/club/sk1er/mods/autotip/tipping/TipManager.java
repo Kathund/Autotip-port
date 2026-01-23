@@ -76,13 +76,40 @@ public class TipManager {
         }
 
         if (tipWaveRate > 0) {
+            long initialDelay = calculateInitialDelay();
+            this.nextTipWave = System.currentTimeMillis() + (initialDelay * 1000L);
+
             tipWaveTask = scheduler.scheduleAtFixedRate(
                     this::tipWave,
-                    0,
+                    initialDelay,
                     tipWaveRate,
                     TimeUnit.SECONDS
             );
+
+            if (Autotip.DEBUG) {
+                Autotip.getInstance().getMessageUtil().log("Tip wave scheduled in " + initialDelay + "s");
+            }
         }
+    }
+
+    /**
+     * Calculates initial delay for tip wave based on last tip wave time.
+     * If enough time has passed, returns 0 (run immediately).
+     * Otherwise, returns remaining time until next wave.
+     */
+    private long calculateInitialDelay() {
+        if (lastTipWave == 0) {
+            return 0;
+        }
+
+        long elapsed = (System.currentTimeMillis() - lastTipWave) / 1000L;
+        long remaining = tipWaveRate - elapsed;
+
+        if (remaining <= 0) {
+            return 0;
+        }
+
+        return remaining;
     }
 
     /**
