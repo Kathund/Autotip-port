@@ -151,6 +151,10 @@ public class StatsManager {
         return getStats(StatsPeriod.LIFETIME);
     }
 
+    public Stats getStatsForDate(LocalDate date) {
+        return getStatsRange(date, date);
+    }
+
     public void addTipSent() {
         getToday().addTipsSent(1);
         save();

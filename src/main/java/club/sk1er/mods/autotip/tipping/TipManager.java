@@ -27,16 +27,16 @@ import club.sk1er.mods.autotip.auth.AuthManager;
 import club.sk1er.mods.autotip.util.HypixelUtil;
 
 import java.io.IOException;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class TipManager {
+    private static final int MAX_RETRY_ROUNDS = 3;
+
     private final ScheduledExecutorService scheduler;
-    private final Queue<Tip> tipQueue;
+    private final Queue<String> gameQueue;
+    private final Map<String, Queue<Tip>> tipsByGame;
+    private final Set<String> failedGames;
 
     private ScheduledFuture<?> keepAliveTask;
     private ScheduledFuture<?> tipWaveTask;
@@ -49,18 +49,20 @@ public class TipManager {
     private long lastTipWave;
     private long nextTipWave;
 
+    private volatile Tip currentTip;
+    private volatile long lastTipSent;
+
     public TipManager() {
         this.scheduler = Executors.newScheduledThreadPool(2, r -> {
             Thread t = new Thread(r, "Autotip-Scheduler");
             t.setDaemon(true);
             return t;
         });
-        this.tipQueue = new ConcurrentLinkedQueue<>();
+        this.gameQueue = new ConcurrentLinkedQueue<>();
+        this.tipsByGame = new ConcurrentHashMap<>();
+        this.failedGames = ConcurrentHashMap.newKeySet();
     }
 
-    /**
-     * Called after successful login - starts the keep-alive and tip wave tasks.
-     */
     public void start(int keepAliveRate, int tipWaveRate, int tipCycleRate) {
         this.keepAliveRate = keepAliveRate;
         this.tipWaveRate = tipWaveRate;
@@ -92,11 +94,6 @@ public class TipManager {
         }
     }
 
-    /**
-     * Calculates initial delay for tip wave based on last tip wave time.
-     * If enough time has passed, returns 0 (run immediately).
-     * Otherwise, returns remaining time until next wave.
-     */
     private long calculateInitialDelay() {
         if (lastTipWave == 0) {
             return 0;
@@ -112,9 +109,6 @@ public class TipManager {
         return remaining;
     }
 
-    /**
-     * Called on logout or disconnect - cancels all scheduled tasks.
-     */
     public void stop() {
         cancelTask(keepAliveTask);
         cancelTask(tipWaveTask);
@@ -122,7 +116,10 @@ public class TipManager {
         keepAliveTask = null;
         tipWaveTask = null;
         tipCycleTask = null;
-        tipQueue.clear();
+        gameQueue.clear();
+        tipsByGame.clear();
+        failedGames.clear();
+        currentTip = null;
     }
 
     private void cancelTask(ScheduledFuture<?> task) {
@@ -131,9 +128,6 @@ public class TipManager {
         }
     }
 
-    /**
-     * Sends keep-alive ping to API to maintain session.
-     */
     private void keepAlive() {
         if (!HypixelUtil.isOnHypixel() || !AuthManager.loggedIn) {
             return;
@@ -156,9 +150,6 @@ public class TipManager {
         }
     }
 
-    /**
-     * Fetches new tips from the API and queues them for sending.
-     */
     private void tipWave() {
         if (!HypixelUtil.isOnHypixel() || !AuthManager.loggedIn) {
             return;
@@ -181,13 +172,25 @@ public class TipManager {
             tipRecord = TipRecord.defaultTips();
         }
 
-        tipQueue.addAll(tipRecord.tips());
+        gameQueue.clear();
+        tipsByGame.clear();
+        failedGames.clear();
+
+        for (Tip tip : tipRecord.tips()) {
+            String game = tip.gamemode();
+            if (!tipsByGame.containsKey(game)) {
+                gameQueue.add(game);
+                tipsByGame.put(game, new ConcurrentLinkedQueue<>());
+            }
+            tipsByGame.get(game).add(tip);
+        }
+
         if (Autotip.DEBUG) {
-            Autotip.getInstance().getMessageUtil().log("§aTip queue: " + tipQueue);
+            Autotip.getInstance().getMessageUtil().log("§aTip wave: " + gameQueue.size() + " games queued");
         }
 
         cancelTask(tipCycleTask);
-        if (tipCycleRate > 0 && !tipQueue.isEmpty()) {
+        if (tipCycleRate > 0 && !gameQueue.isEmpty()) {
             tipCycleTask = scheduler.scheduleAtFixedRate(
                     this::tipCycle,
                     0,
@@ -197,22 +200,151 @@ public class TipManager {
         }
     }
 
-    /**
-     * Sends one tip command from the queue.
-     */
     private void tipCycle() {
-        if (tipQueue.isEmpty() || !HypixelUtil.isOnHypixel()) {
+        if (!HypixelUtil.isOnHypixel()) {
             cancelTask(tipCycleTask);
             tipCycleTask = null;
             return;
         }
 
-        Tip tip = tipQueue.poll();
+        if (gameQueue.isEmpty()) {
+            cancelTask(tipCycleTask);
+            tipCycleTask = null;
+            currentTip = null;
+
+            // Start retry phase if there are failed games
+            if (!failedGames.isEmpty()) {
+                scheduler.schedule(() -> startRetryPhase(1), tipCycleRate, TimeUnit.SECONDS);
+            }
+            return;
+        }
+
+        String currentGame = gameQueue.peek();
+        if (currentGame == null) {
+            return;
+        }
+
+        Queue<Tip> tipsForGame = tipsByGame.get(currentGame);
+        if (tipsForGame == null || tipsForGame.isEmpty()) {
+            gameQueue.poll();
+            return;
+        }
+
+        Tip tip = tipsForGame.poll();
         if (tip != null) {
+            currentTip = tip;
+            lastTipSent = System.currentTimeMillis();
+
             if (Autotip.DEBUG) {
                 Autotip.getInstance().getMessageUtil().log("§aTipping: " + tip);
             }
             Autotip.getInstance().getMessageUtil().sendCommand(tip.asCommand());
+
+            if (tipsForGame.isEmpty()) {
+                gameQueue.poll();
+            }
+        }
+    }
+
+    public void onPlayerOffline() {
+        if (currentTip == null) {
+            return;
+        }
+
+        long timeSinceTip = System.currentTimeMillis() - lastTipSent;
+        if (timeSinceTip > 5000) {
+            return;
+        }
+
+        String failedGame = currentTip.gamemode();
+        failedGames.add(failedGame);
+
+        if (Autotip.DEBUG) {
+            Autotip.getInstance().getMessageUtil().log("§ePlayer offline for " + failedGame + ", will retry at end");
+        }
+    }
+
+    private void startRetryPhase(int round) {
+        if (!HypixelUtil.isOnHypixel() || !AuthManager.loggedIn) {
+            return;
+        }
+
+        if (failedGames.isEmpty() || round > MAX_RETRY_ROUNDS) {
+            if (Autotip.DEBUG && round > MAX_RETRY_ROUNDS) {
+                Autotip.getInstance().getMessageUtil().log("§cMax retry rounds reached");
+            }
+            failedGames.clear();
+            return;
+        }
+
+        if (Autotip.DEBUG) {
+            Autotip.getInstance().getMessageUtil().log("§eRetry round " + round + "/" + MAX_RETRY_ROUNDS + " for " + failedGames.size() + " games");
+        }
+
+        // Fetch new tips from API
+        TipRecord tipRecord;
+        try {
+            var request = AutotipAPIRequestFactory.createTipRequest(AuthManager.sessionKey);
+            String response = Autotip.getInstance().getAutotipHttpClient().executeRequest(request);
+            tipRecord = TipRecord.fromResponseBody(response);
+
+            if (!tipRecord.success() || tipRecord.tips() == null) {
+                if (Autotip.DEBUG) {
+                    Autotip.getInstance().getMessageUtil().log("§cFailed to fetch retry tips");
+                }
+                failedGames.clear();
+                return;
+            }
+        } catch (Exception e) {
+            if (Autotip.DEBUG) {
+                Autotip.getInstance().getMessageUtil().log("§cFailed to fetch retry tips: " + e.getMessage());
+            }
+            failedGames.clear();
+            return;
+        }
+
+        // Build retry queue for failed games only
+        Queue<Tip> retryQueue = new ConcurrentLinkedQueue<>();
+        Set<String> gamesToRetry = new HashSet<>(failedGames);
+        failedGames.clear();
+
+        for (Tip tip : tipRecord.tips()) {
+            if (gamesToRetry.contains(tip.gamemode())) {
+                retryQueue.add(tip);
+                gamesToRetry.remove(tip.gamemode());
+            }
+        }
+
+        if (retryQueue.isEmpty()) {
+            if (Autotip.DEBUG) {
+                Autotip.getInstance().getMessageUtil().log("§cNo retry tips available for failed games");
+            }
+            return;
+        }
+
+        sendRetryQueue(retryQueue, round);
+    }
+
+    private void sendRetryQueue(Queue<Tip> retryQueue, int round) {
+        if (retryQueue.isEmpty()) {
+            // After this round, check if any games still failed
+            if (!failedGames.isEmpty()) {
+                scheduler.schedule(() -> startRetryPhase(round + 1), tipCycleRate, TimeUnit.SECONDS);
+            }
+            return;
+        }
+
+        Tip tip = retryQueue.poll();
+        if (tip != null) {
+            currentTip = tip;
+            lastTipSent = System.currentTimeMillis();
+
+            if (Autotip.DEBUG) {
+                Autotip.getInstance().getMessageUtil().log("§aRetry " + round + "/" + MAX_RETRY_ROUNDS + ": " + tip);
+            }
+            Autotip.getInstance().getMessageUtil().sendCommand(tip.asCommand());
+
+            scheduler.schedule(() -> sendRetryQueue(retryQueue, round), tipCycleRate, TimeUnit.SECONDS);
         }
     }
 
@@ -225,7 +357,7 @@ public class TipManager {
     }
 
     public int getQueueSize() {
-        return tipQueue.size();
+        return gameQueue.size();
     }
 
     public int getKeepAliveRate() {

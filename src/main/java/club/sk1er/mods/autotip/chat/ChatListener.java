@@ -57,12 +57,19 @@ public class ChatListener {
             "\\+(?<coins>\\d+) (?<game>.+?) (?:Coins|Tokens)"
     );
 
+    private static final String PLAYER_OFFLINE = "That player is not online, try another user!";
+
     public ChatListener() {
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (overlay) return; // Ignore action bar messages
             if (!HypixelUtil.isOnHypixel()) return;
 
             String text = message.getString();
+
+            if (text.contains(PLAYER_OFFLINE)) {
+                Autotip.getInstance().getTipManager().onPlayerOffline();
+                return;
+            }
 
             if (Autotip.DEBUG && text.contains("tipped")) {
                 debugPrintComponent(message, 0);

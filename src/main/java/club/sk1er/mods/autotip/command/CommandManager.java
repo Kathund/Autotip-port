@@ -31,7 +31,10 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 
-import java.util.Map;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.*;
 
 public class CommandManager {
 
@@ -80,27 +83,33 @@ public class CommandManager {
     private LiteralArgumentBuilder<FabricClientCommandSource> buildStatsSubcommand(String name) {
         return ClientCommandManager.literal(name)
                 .executes(context -> {
-                    showStats(StatsManager.StatsPeriod.LIFETIME);
+                    showStats(StatsManager.StatsPeriod.LIFETIME, null);
                     return 1;
                 })
-                .then(ClientCommandManager.argument("period", StringArgumentType.word())
+                .then(ClientCommandManager.argument("period", StringArgumentType.greedyString())
                         .suggests((context, builder) -> {
                             builder.suggest("daily");
                             builder.suggest("weekly");
                             builder.suggest("monthly");
                             builder.suggest("yearly");
                             builder.suggest("lifetime");
+                            builder.suggest(LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
                             return builder.buildFuture();
                         })
                         .executes(context -> {
                             String periodStr = StringArgumentType.getString(context, "period");
+                            LocalDate date = parseDate(periodStr);
+                            if (date != null) {
+                                showStats(null, date);
+                                return 1;
+                            }
                             StatsManager.StatsPeriod period = parsePeriod(periodStr);
                             if (period == null) {
                                 messageUtil.send("§cUnknown period: " + periodStr);
-                                messageUtil.send("§cValid: daily, weekly, monthly, yearly, lifetime");
+                                messageUtil.send("§cValid: daily, weekly, monthly, yearly, lifetime, or DD/MM/YYYY");
                                 return 0;
                             }
-                            showStats(period);
+                            showStats(period, null);
                             return 1;
                         }));
     }
@@ -108,27 +117,33 @@ public class CommandManager {
     private LiteralArgumentBuilder<FabricClientCommandSource> buildCurrencySubcommand(String name) {
         return ClientCommandManager.literal(name)
                 .executes(context -> {
-                    showCurrency(StatsManager.StatsPeriod.LIFETIME);
+                    showCurrency(StatsManager.StatsPeriod.LIFETIME, null);
                     return 1;
                 })
-                .then(ClientCommandManager.argument("period", StringArgumentType.word())
+                .then(ClientCommandManager.argument("period", StringArgumentType.greedyString())
                         .suggests((context, builder) -> {
                             builder.suggest("daily");
                             builder.suggest("weekly");
                             builder.suggest("monthly");
                             builder.suggest("yearly");
                             builder.suggest("lifetime");
+                            builder.suggest(LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
                             return builder.buildFuture();
                         })
                         .executes(context -> {
                             String periodStr = StringArgumentType.getString(context, "period");
+                            LocalDate date = parseDate(periodStr);
+                            if (date != null) {
+                                showCurrency(null, date);
+                                return 1;
+                            }
                             StatsManager.StatsPeriod period = parsePeriod(periodStr);
                             if (period == null) {
                                 messageUtil.send("§cUnknown period: " + periodStr);
-                                messageUtil.send("§cValid: daily, weekly, monthly, yearly, lifetime");
+                                messageUtil.send("§cValid: daily, weekly, monthly, yearly, lifetime, or DD/MM/YYYY");
                                 return 0;
                             }
-                            showCurrency(period);
+                            showCurrency(period, null);
                             return 1;
                         }));
     }
@@ -139,7 +154,8 @@ public class CommandManager {
         messageUtil.send("");
         messageUtil.send("§e/autotip info §7- Show connection info");
         messageUtil.send("§e/autotip stats [period] §7- Show tipping stats");
-        messageUtil.send("§e/autotip currency [period] §7- Show tokens / coins earned");
+        messageUtil.send("§e/autotip currency [period] §7- Show coins/tokens");
+        messageUtil.send("§7Periods: daily, weekly, monthly, yearly, lifetime");
         messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
     }
 
@@ -167,9 +183,17 @@ public class CommandManager {
         messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
     }
 
-    private void showStats(StatsManager.StatsPeriod period) {
-        Stats stats = Autotip.getInstance().getStatsManager().getStats(period);
-        String periodName = period.name().charAt(0) + period.name().substring(1).toLowerCase();
+    private void showStats(StatsManager.StatsPeriod period, LocalDate date) {
+        Stats stats;
+        String periodName;
+
+        if (date != null) {
+            stats = Autotip.getInstance().getStatsManager().getStatsForDate(date);
+            periodName = date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        } else {
+            stats = Autotip.getInstance().getStatsManager().getStats(period);
+            periodName = period.name().charAt(0) + period.name().substring(1).toLowerCase();
+        }
 
         messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
         messageUtil.send("§a§lAutotip Stats §7(" + periodName + ")");
@@ -184,11 +208,25 @@ public class CommandManager {
         messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
     }
 
-    private void showCurrency(StatsManager.StatsPeriod period) {
-        Stats stats = Autotip.getInstance().getStatsManager().getStats(period);
-        String periodName = period.name().charAt(0) + period.name().substring(1).toLowerCase();
+    private void showCurrency(StatsManager.StatsPeriod period, LocalDate date) {
+        Stats stats;
+        String periodName;
+
+        if (date != null) {
+            stats = Autotip.getInstance().getStatsManager().getStatsForDate(date);
+            periodName = date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        } else {
+            stats = Autotip.getInstance().getStatsManager().getStats(period);
+            periodName = period.name().charAt(0) + period.name().substring(1).toLowerCase();
+        }
+
         Map<String, Integer> coinsSent = stats.getCoinsSent();
         Map<String, Integer> coinsReceived = stats.getCoinsReceived();
+
+        Set<String> allGames = new TreeSet<>();
+        allGames.addAll(coinsSent.keySet());
+        allGames.addAll(coinsReceived.keySet());
+        List<String> sortedGames = new ArrayList<>(allGames);
 
         messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
         messageUtil.send("§a§lAutotip Currency §7(" + periodName + ")");
@@ -196,37 +234,33 @@ public class CommandManager {
         if (!coinsSent.isEmpty()) {
             messageUtil.send("");
             messageUtil.send("§6§lSent:");
-            coinsSent.entrySet().stream()
-                    .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
-                    .forEach(entry -> {
-                        String game = entry.getKey();
-                        int amount = entry.getValue();
-                        boolean isToken = TOKEN_GAMES.contains(game);
-
-                        if (isToken) {
-                            messageUtil.send("  §a" + game + ": §2" + Stats.formatNumber(amount) + " Tokens");
-                        } else {
-                            messageUtil.send("  §6" + game + ": §e" + Stats.formatNumber(amount) + " Coins");
-                        }
-                    });
+            for (String game : sortedGames) {
+                Integer amount = coinsSent.get(game);
+                if (amount != null) {
+                    boolean isToken = TOKEN_GAMES.contains(game);
+                    if (isToken) {
+                        messageUtil.send("  §a" + game + ": §2" + Stats.formatNumber(amount) + " Tokens");
+                    } else {
+                        messageUtil.send("  §6" + game + ": §e" + Stats.formatNumber(amount) + " Coins");
+                    }
+                }
+            }
         }
 
         if (!coinsReceived.isEmpty()) {
             messageUtil.send("");
             messageUtil.send("§6§lReceived:");
-            coinsReceived.entrySet().stream()
-                    .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
-                    .forEach(entry -> {
-                        String game = entry.getKey();
-                        int amount = entry.getValue();
-                        boolean isToken = TOKEN_GAMES.contains(game);
-
-                        if (isToken) {
-                            messageUtil.send("  §a" + game + ": §2" + Stats.formatNumber(amount) + " Tokens");
-                        } else {
-                            messageUtil.send("  §6" + game + ": §e" + Stats.formatNumber(amount) + " Coins");
-                        }
-                    });
+            for (String game : sortedGames) {
+                Integer amount = coinsReceived.get(game);
+                if (amount != null) {
+                    boolean isToken = TOKEN_GAMES.contains(game);
+                    if (isToken) {
+                        messageUtil.send("  §a" + game + ": §2" + Stats.formatNumber(amount) + " Tokens");
+                    } else {
+                        messageUtil.send("  §6" + game + ": §e" + Stats.formatNumber(amount) + " Coins");
+                    }
+                }
+            }
         }
 
         if (coinsSent.isEmpty() && coinsReceived.isEmpty()) {
@@ -259,5 +293,24 @@ public class CommandManager {
             case "lifetime", "all", "total", "l" -> StatsManager.StatsPeriod.LIFETIME;
             default -> null;
         };
+    }
+
+    private LocalDate parseDate(String str) {
+        // Try dd/MM/yyyy format
+        try {
+            return LocalDate.parse(str, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        } catch (DateTimeParseException ignored) {}
+
+        // Try dd-MM-yyyy format
+        try {
+            return LocalDate.parse(str, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+        } catch (DateTimeParseException ignored) {}
+
+        // Try yyyy-MM-dd format
+        try {
+            return LocalDate.parse(str);
+        } catch (DateTimeParseException ignored) {}
+
+        return null;
     }
 }
