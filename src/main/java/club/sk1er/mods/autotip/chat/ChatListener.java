@@ -20,6 +20,7 @@
 package club.sk1er.mods.autotip.chat;
 
 import club.sk1er.mods.autotip.Autotip;
+import club.sk1er.mods.autotip.config.MessageMode;
 import club.sk1er.mods.autotip.stats.StatsManager;
 import club.sk1er.mods.autotip.util.HypixelUtil;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
@@ -57,26 +58,59 @@ public class ChatListener {
             "\\+(?<coins>\\d+) (?<game>.+?) (?:Coins|Tokens)"
     );
 
+    // Error messages
     private static final String PLAYER_OFFLINE = "That player is not online, try another user!";
+    private static final String ALREADY_TIPPED_HOUR = "You've already tipped someone in the past hour in";
+    private static final String ALREADY_TIPPED_PERSON = "You've already tipped that person today in";
+    private static final String NO_BOOSTERS = "No one has a network booster active right now!";
+    private static final String ALL_TIPPED = "You already tipped everyone that has boosters active";
 
     public ChatListener() {
-        ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (overlay) return; // Ignore action bar messages
-            if (!HypixelUtil.isOnHypixel()) return;
+        ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> {
+            if (overlay) return true;
+            if (!HypixelUtil.isOnHypixel()) return true;
 
             String text = message.getString();
+            MessageType type = getMessageType(text);
 
-            if (text.contains(PLAYER_OFFLINE)) {
-                Autotip.getInstance().getTipManager().onPlayerOffline();
-                return;
-            }
-
-            if (Autotip.DEBUG && text.contains("tipped")) {
-                debugPrintComponent(message, 0);
-            }
+            if (type == MessageType.NONE) return true;
 
             processMessage(text, message);
+
+            MessageMode mode = Autotip.getInstance().getConfig().getMessageMode();
+            return shouldShowMessage(type, mode);
         });
+    }
+
+    private enum MessageType {
+        NONE,       // Not a tip-related message
+        SUCCESS,    // "You tipped" or "You were tipped"
+        ERROR       // "Player not online" or "Already tipped"
+    }
+
+    private MessageType getMessageType(String text) {
+        // Success messages
+        if (TIPS_SENT_MULTI.matcher(text).find()) return MessageType.SUCCESS;
+        if (TIPS_SENT_SINGLE.matcher(text).find()) return MessageType.SUCCESS;
+        if (TIPS_RECEIVED.matcher(text).find()) return MessageType.SUCCESS;
+
+        // Error messages
+        if (text.contains(PLAYER_OFFLINE)) return MessageType.ERROR;
+        if (text.contains(ALREADY_TIPPED_HOUR)) return MessageType.ERROR;
+        if (text.contains(ALREADY_TIPPED_PERSON)) return MessageType.ERROR;
+        if (text.contains(NO_BOOSTERS)) return MessageType.ERROR;
+        if (text.contains(ALL_TIPPED)) return MessageType.ERROR;
+
+        return MessageType.NONE;
+    }
+
+    private boolean shouldShowMessage(MessageType type, MessageMode mode) {
+        return switch (mode) {
+            case ALL -> true;
+            case OFF -> false;
+            case SUCCESS -> type == MessageType.SUCCESS;
+            case ERROR -> type == MessageType.ERROR;
+        };
     }
 
     // This method is not used in production, its there to debug components or RegExes in case hypixel changes the chat format
@@ -128,6 +162,16 @@ public class ChatListener {
     }
 
     private void processMessage(String message, Component component) {
+        // Handle player offline error
+        if (message.contains(PLAYER_OFFLINE)) {
+            Autotip.getInstance().getTipManager().onPlayerOffline();
+            return;
+        }
+
+        if (Autotip.DEBUG && message.contains("tipped")) {
+            debugPrintComponent(component, 0);
+        }
+
         StatsManager stats = Autotip.getInstance().getStatsManager();
 
         Matcher tipsSentMulti = TIPS_SENT_MULTI.matcher(message);

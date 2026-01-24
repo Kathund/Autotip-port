@@ -23,6 +23,7 @@ import club.sk1er.mods.autotip.api.AutotipHttpClient;
 import club.sk1er.mods.autotip.auth.AuthManager;
 import club.sk1er.mods.autotip.chat.ChatListener;
 import club.sk1er.mods.autotip.command.CommandManager;
+import club.sk1er.mods.autotip.config.Config;
 import club.sk1er.mods.autotip.stats.StatsManager;
 import club.sk1er.mods.autotip.tipping.TipManager;
 import club.sk1er.mods.autotip.util.HypixelUtil;
@@ -41,12 +42,14 @@ public class Autotip implements ClientModInitializer {
     private TipManager tipManager;
     private StatsManager statsManager;
     private ChatListener chatListener;
+    private Config config;
     public static final String VERSION = "3.3";
 
     @Override
     public void onInitializeClient() {
         instance = this;
         messageUtil = new MessageUtil();
+        config = new Config();
         authManager = new AuthManager();
         autotipHttpClient = new AutotipHttpClient();
         commandManager = new CommandManager();
@@ -88,5 +91,9 @@ public class Autotip implements ClientModInitializer {
 
     public StatsManager getStatsManager() {
         return statsManager;
+    }
+
+    public Config getConfig() {
+        return config;
     }
 }

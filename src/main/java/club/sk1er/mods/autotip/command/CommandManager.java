@@ -21,6 +21,7 @@ package club.sk1er.mods.autotip.command;
 
 import club.sk1er.mods.autotip.Autotip;
 import club.sk1er.mods.autotip.auth.AuthManager;
+import club.sk1er.mods.autotip.config.MessageMode;
 import club.sk1er.mods.autotip.stats.Stats;
 import club.sk1er.mods.autotip.stats.StatsManager;
 import club.sk1er.mods.autotip.util.HypixelUtil;
@@ -69,7 +70,9 @@ public class CommandManager {
                 .then(buildStatsSubcommand("stats"))
                 .then(buildStatsSubcommand("s"))
                 .then(buildCurrencySubcommand("currency"))
-                .then(buildCurrencySubcommand("c"));
+                .then(buildCurrencySubcommand("c"))
+                .then(buildMessagesSubcommand("messages"))
+                .then(buildMessagesSubcommand("m"));
     }
 
     private LiteralArgumentBuilder<FabricClientCommandSource> buildInfoSubcommand(String name) {
@@ -148,6 +151,33 @@ public class CommandManager {
                         }));
     }
 
+    private LiteralArgumentBuilder<FabricClientCommandSource> buildMessagesSubcommand(String name) {
+        return ClientCommandManager.literal(name)
+                .executes(context -> {
+                    showCurrentMessageMode();
+                    return 1;
+                })
+                .then(ClientCommandManager.argument("mode", StringArgumentType.word())
+                        .suggests((context, builder) -> {
+                            builder.suggest("all");
+                            builder.suggest("off");
+                            builder.suggest("success");
+                            builder.suggest("error");
+                            return builder.buildFuture();
+                        })
+                        .executes(context -> {
+                            String modeStr = StringArgumentType.getString(context, "mode");
+                            MessageMode mode = MessageMode.fromString(modeStr);
+                            if (mode == null) {
+                                messageUtil.send("§cUnknown mode: " + modeStr);
+                                messageUtil.send("§cValid: all, off, success, error");
+                                return 0;
+                            }
+                            setMessageMode(mode);
+                            return 1;
+                        }));
+    }
+
     private void showHelp() {
         messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
         messageUtil.send("§a§lAutotip v" + Autotip.VERSION + " §aby §6QWERTZ_EXE §aand §6Sk1erLLC");
@@ -155,7 +185,7 @@ public class CommandManager {
         messageUtil.send("§e/autotip info §7- Show connection info");
         messageUtil.send("§e/autotip stats [period] §7- Show tipping stats");
         messageUtil.send("§e/autotip currency [period] §7- Show coins/tokens");
-        messageUtil.send("§7Periods: daily, weekly, monthly, yearly, lifetime");
+        messageUtil.send("§e/autotip messages [mode] §7- Set message visibility");
         messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
     }
 
@@ -272,6 +302,39 @@ public class CommandManager {
         }
 
         messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+    }
+
+    private void showCurrentMessageMode() {
+        MessageMode mode = Autotip.getInstance().getConfig().getMessageMode();
+        String modeDescription = switch (mode) {
+            case ALL -> "§aAll §7- Showing all tip messages";
+            case OFF -> "§cOff §7- Hiding all tip messages";
+            case SUCCESS -> "§2Success §7- Showing only success messages";
+            case ERROR -> "§eError §7- Showing only error messages";
+        };
+
+        messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        messageUtil.send("§a§lAutotip Messages");
+        messageUtil.send("");
+        messageUtil.send("§7Current mode: " + modeDescription);
+        messageUtil.send("");
+        messageUtil.send("§7Available modes:");
+        messageUtil.send("  §aall §7- Show all tip messages");
+        messageUtil.send("  §coff §7- Hide all tip messages");
+        messageUtil.send("  §2success §7- Only show success (you tipped/were tipped)");
+        messageUtil.send("  §eerror §7- Only show errors (offline/already tipped)");
+        messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+    }
+
+    private void setMessageMode(MessageMode mode) {
+        Autotip.getInstance().getConfig().setMessageMode(mode);
+        String modeDescription = switch (mode) {
+            case ALL -> "§aAll §7- Showing all tip messages";
+            case OFF -> "§cOff §7- Hiding all tip messages";
+            case SUCCESS -> "§2Success §7- Showing only success messages";
+            case ERROR -> "§eError §7- Showing only error messages";
+        };
+        messageUtil.send("§6[Autotip] §7Message mode set to: " + modeDescription);
     }
 
     private String formatTime(long seconds) {
