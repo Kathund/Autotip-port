@@ -307,10 +307,10 @@ public class CommandManager {
     private void showCurrentMessageMode() {
         MessageMode mode = Autotip.getInstance().getConfig().getMessageMode();
         String modeDescription = switch (mode) {
-            case ALL -> "§aAll §7- Showing all tip messages";
-            case OFF -> "§cOff §7- Hiding all tip messages";
-            case SUCCESS -> "§2Success §7- Showing only success messages";
-            case ERROR -> "§eError §7- Showing only error messages";
+            case ALL -> "§aall §7- Showing all tip messages";
+            case OFF -> "§coff §7- Hiding all tip messages";
+            case SUCCESS -> "§2success §7- Showing only success messages";
+            case ERROR -> "§eerror §7- Showing only error messages";
         };
 
         messageUtil.send("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
