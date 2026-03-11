@@ -17,6 +17,26 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    maven {
+        name = "Essential-Repo"
+        url = "https://repo.essential.gg/public"
+    }
+}
+
+// Partner mod configurations - ONLY these change between builds
+// MC version and Fabric API version come from gradle.properties
+def partnerModConfigs = [
+    '1.21.8': 'gg.essential:partner-mod-integration-1.21.8-fabric:1.0.6',
+    '1.21.9': 'gg.essential:partner-mod-integration-1.21.9-fabric:1.0.6',
+    '1.21.10': 'gg.essential:partner-mod-integration-1.21.9-fabric:1.0.6',
+    '1.21.11': 'gg.essential:partner-mod-integration-1.21.11-fabric:1.0.6'
+]
+
+// Determine which partner mod version to include (from -PpartnerVersion, defaults to MC version from gradle.properties)
+def partnerVersion = project.hasProperty('partnerVersion') ? project.partnerVersion : project.minecraft_version
+def partnerModDependency = partnerModConfigs[partnerVersion]
+if (partnerModDependency == null) {
+    throw new GradleException("Unknown partner mod version: ${partnerVersion}. Supported: ${partnerModConfigs.keySet()}")
 }
 
 configurations {
@@ -25,12 +45,15 @@ configurations {
 }
 
 dependencies {
-    // To change the versions see the gradle.properties file
+    // ALWAYS use MC version and Fabric API version from gradle.properties
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     shade 'org.apache.httpcomponents:httpclient:4.5.14'
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    
+    // ONLY change the partner mod version - use modImplementation (not bundled, separate mod dependency)
+    include partnerModDependency
 }
 
 processResources {
@@ -77,9 +100,9 @@ jar {
     }
 }
 
-// Configure shadowJar to only include httpclient (not the entire classpath)
+// Configure shadowJar to include only httpclient (partner mod is separate via modImplementation)
 shadowJar {
-    archiveClassifier.set('dev')
+    archiveClassifier.set("dev-${partnerVersion}")
     configurations = [project.configurations.shade]
 
     relocate 'org.apache.http', 'club.sk1er.mods.autotip.shaded.org.apache.http'
@@ -87,10 +110,22 @@ shadowJar {
     relocate 'org.apache.commons.codec', 'club.sk1er.mods.autotip.shaded.org.apache.commons.codec'
 }
 
-// Remap the shadowed jar
+// Remap the shadowed jar with partner version-specific name
 remapJar {
     dependsOn shadowJar
     inputFile = shadowJar.archiveFile
+    archiveClassifier.set(partnerVersion)
+}
+
+// Print build info
+tasks.named('remapJar').configure {
+    doLast {
+        println "\n✓ Built Autotip"
+        println "  MC Version (build): ${project.minecraft_version}"
+        println "  Partner Mod Version: ${partnerVersion}"
+        println "  Output: ${archiveFile.get().asFile.name}"
+        println "  Location: ${archiveFile.get().asFile.path}\n"
+    }
 }
 
 // configure the maven publication
