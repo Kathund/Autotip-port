@@ -9,6 +9,11 @@ Every 30 minutes, the mod automatically tips all active network boosters and oth
 
 Unlike other AutoTip mods that simply automate the `/tip all` command, which does nothing if no Network Boosters are active, this mod goes much further by using a custom API. By sending tips through this API, your client enters a rotation where thousands of other active users tip you back. This ensures you get tipped back, giving you a constant flow of XP & coins that basic macros completely miss.
 
+## Download
+
+[![Modrinth](https://img.shields.io/badge/Modrinth-Download-1bd96a?style=for-the-badge&logo=modrinth)](https://modrinth.com/mod/autotip-port)
+[![Sk1er.club](https://img.shields.io/badge/Sk1er.club-Download-4a90d9?style=for-the-badge)](https://sk1er.club/mods/autotip)
+
 **Commands**
 
 ``/autotip or /at`` - Shows general info.
