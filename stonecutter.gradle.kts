@@ -2,7 +2,7 @@ plugins {
     id("dev.kikugie.stonecutter")
 }
 
-stonecutter active "1.21.11" /* DO NOT EDIT */
+stonecutter active "26.2" /* DO NOT EDIT */
 
 stonecutter parameters {
     swaps["mod_id"] = "\"${property("mod.id")}\";"
@@ -14,6 +14,10 @@ stonecutter parameters {
     replacements {
         string(current.parsed >= "1.21.11") {
             replace("ResourceLocation", "Identifier")
+        }
+
+        string(current.parsed >= "26.1") {
+            replace("classTweaker v2 named", "classTweaker v2 official")
         }
     }
 }
