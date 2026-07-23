@@ -42,12 +42,13 @@ public class AutotipAPIRequestFactory {
         String uuid = URLEncoder.encode(user.getProfileId().toString().replace("-", ""), StandardCharsets.UTF_8);
         String tips = URLEncoder.encode(String.valueOf(totalTips), StandardCharsets.UTF_8);
         String version = URLEncoder.encode(Autotip.VERSION, StandardCharsets.UTF_8);
+        String mcVersion = URLEncoder.encode(Minecraft.getInstance().getLaunchedVersion(), StandardCharsets.UTF_8);
         String os = URLEncoder.encode(System.getProperty("os.name"), StandardCharsets.UTF_8);
         String hash = URLEncoder.encode(serverHash, StandardCharsets.UTF_8);
 
         String url = String.format(
-                "%s?username=%s&uuid=%s&tips=%s&v=%s&os=%s&hash=%s",
-                BASE_URL + LOGIN_ENDPOINT, username, uuid, tips, version, os, hash
+                "%s?username=%s&uuid=%s&tips=%s&v=%s&mc=%s&os=%s&hash=%s",
+                BASE_URL + LOGIN_ENDPOINT, username, uuid, tips, version, mcVersion, os, hash
         );
 
         return getURIfromUrl(url);
