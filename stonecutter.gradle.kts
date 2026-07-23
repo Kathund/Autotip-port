@@ -10,6 +10,8 @@ stonecutter parameters {
     swaps["mod_version"] = "\"${property("mod.version")}\";"
     swaps["minecraft"] = "\"${node.metadata.version}\";"
     dependencies["fapi"] = node.project.property("deps.fabric_api") as String
+    dependencies["emiv"] = node.project.property("deps.essential_partner_mod_integration.version") as String
+    dependencies["emimcv"] = node.project.property("deps.essential_partner_mod_integration.minecraft_version") as String
 
     replacements {
         string(current.parsed >= "1.21.11") {

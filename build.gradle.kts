@@ -10,6 +10,21 @@ val requiredJava: JavaVersion = when {
     else -> JavaVersion.VERSION_21
 }
 
+repositories {
+    fun strictMaven(url: String, alias: String, vararg groups: String) = exclusiveContent {
+        forRepository { maven(url) { name = alias } }
+        filter { groups.forEach(::includeGroup) }
+    }
+
+    fun strictMaven(repos: List<String>, vararg groups: String) = exclusiveContent {
+        repos.forEach { forRepository { maven(it) } }
+        filter { groups.forEach(::includeGroup) }
+    }
+
+    strictMaven("https://repo.essential.gg/public", "Essential-Repo", "gg.essential")
+}
+
+
 dependencies {
     minecraft("com.mojang:minecraft:${sc.current.version}")
     loomx.applyMojangMappings()
@@ -28,6 +43,8 @@ dependencies {
 
     modImplementation("commons-codec:commons-codec:1.15")
     include("commons-codec:commons-codec:1.15")
+
+    include("gg.essential:partner-mod-integration-${property("deps.essential_partner_mod_integration.minecraft_version")}:${property("deps.essential_partner_mod_integration.version")}")
 }
 
 loom {
