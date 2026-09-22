@@ -35,7 +35,7 @@ public class Autotip implements ClientModInitializer {
     public static final String ID = /*$ mod_id*/ "autotip";
     public static final String NAME = /*$ mod_name*/ "AutoTip";
     public static final String VERSION = /*$ mod_version*/ "3.3";
-    public static final String MC_VERSION = /*$ minecraft*/ "26.2";
+    public static final String MC_VERSION = /*$ minecraft*/ "26.3";
     public static final String ICON = "/assets/" + ID + "/logo.png";
 
     // NEVER TRUE IN PRODUCTION

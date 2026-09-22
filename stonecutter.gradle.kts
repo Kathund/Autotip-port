@@ -2,7 +2,7 @@ plugins {
     id("dev.kikugie.stonecutter")
 }
 
-stonecutter active "26.2" /* DO NOT EDIT */
+stonecutter active "26.3" /* DO NOT EDIT */
 
 stonecutter parameters {
     swaps["mod_id"] = "\"${property("mod.id")}\";"
