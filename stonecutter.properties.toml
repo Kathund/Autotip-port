@@ -5,7 +5,7 @@ mod.version = "3.3"
 
 deps.fabric_loader = "0.19.3"
 loomx.loom_version = "1.17-SNAPSHOT"
-deps.essential_partner_mod_integration.version = "1.0.7"
+deps.essential_partner_mod_integration.version = "1.0.8"
 
 ["1.21.8"]
 mod.mc_compat = "1.21.8"
@@ -40,4 +40,4 @@ mod.mc_compat = "26.2"
 mod.mc_releases = ["26.2"]
 
 deps.fabric_api = "0.155.2+26.2"
-deps.essential_partner_mod_integration.minecraft_version = "26.1-fabric"
+deps.essential_partner_mod_integration.minecraft_version = "26.2-fabric"
